@@ -1,4 +1,5 @@
-from operator import is_
+
+from gettext import find
 from window import Window
 from device import Device
 import numpy as np
@@ -10,7 +11,9 @@ import time
 import argparse
 import sys
 
-def main(n, adb = False, mss = False):
+from image_processing import find_grid_by_maxima
+
+def main(n, adb = False, mss = False, window_name='scrcpy'):
 
     if adb and mss:
         print('choose one method')
@@ -33,41 +36,39 @@ def main(n, adb = False, mss = False):
         none_value = 33
 
     if mss:
-        window = Window('Redmi')
-        window.set_focus()
-        width, height = window.get_width(), window.get_height()
-        window.set_roi(math.ceil(0.02 * width), math.ceil(0.305 * height),
-                       math.ceil(0.955 * width), math.ceil(0.44 * height))
-        image = cv2.cvtColor(window.get_roi_image(), cv2.COLOR_RGBA2GRAY)
-        width, height = window.get_roi_width(), window.get_roi_height()
-        true_values = [65, 70]
-        false_values = [129, 143]
-        none_value = 34
+        window = Window(window_name)
+        if not window.is_valid():
+            return
+        window.select_roi()
+        image = window.get_roi_image()
         mouse = Controller()
 
+    grid_x, grid_y = find_grid_by_maxima(image, refine=True)
 
-    image = window.get_full_image()
-    image_s = image.copy()
-    # image = cv2.circle(image, (int(image.shape[1]/2), int(image.shape[0]/2)), 3, (255, 0, 255), -1)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    res = cv2.Canny(image, 1, 1, None, 3)
-    res = cv2.GaussianBlur(res, (5, 5), 0, None, 0, cv2.BORDER_DEFAULT)
-    res = cv2.erode(res, (3, 3))
-    lines = cv2.HoughLinesP(res, 1, math.pi / 180, 50, None, 50, 10)
+
+
+    sys.exit()
+
+
+
+    # cv2.imshow('res', res)
+    # cv2.waitKey()
+
+    lines = cv2.HoughLinesP(res, 1, math.pi / 180, 2, None, 200, 5)
     lines = lines.reshape(lines.shape[0], lines.shape[2])
     mask = lines[:, 0] - lines[:, 2] == 0
     lines = lines[mask]
     # print(mask)
     # sys.exit()
-    # for line in lines:
-    #     cv2.line( image_s, (line[0], line[1]), (line[2], line[3]), (255,0,255), 1, cv2.LINE_AA);
+    for line in lines:
+        cv2.line( image_s, (line[0], line[1]), (line[2], line[3]), (255,0,255), 1, cv2.LINE_AA);
 
     # print(lines)
 
-    # cv2.imshow('image', image_s)
-    # cv2.waitKey()
+    cv2.imshow('image', image_s)
+    cv2.waitKey()
 
-    # sys.exit()
+    sys.exit()
 
 
     rng = lambda x: np.arange(x, 2 * n * x, 2 * x)
@@ -186,6 +187,7 @@ if __name__ == "__main__":
     parser.add_argument('n', type=int)
     parser.add_argument('--adb', action='store_true')
     parser.add_argument('--mss', action='store_true')
+    parser.add_argument('--window_name', default='scrcpy', type=str)
     args = parser.parse_args()
 
     main(**vars(args))
