@@ -2,11 +2,15 @@ import sys
 import mss
 import time
 import numpy as np
+import cv2
 
 class Window():
     def __init__(self, name):
         self.name = name
-        self.id = None
+        self.valid = False
+        self.geometry = None
+        self.roi = None
+        self.mss = mss.mss()
         self.lookup_geometry()
 
     def set_focus(self):
@@ -16,19 +20,39 @@ class Window():
         return self.valid
 
     def _get_image(self, crop):
-        image = mss.mss().grab(crop)
+        image = self.mss.grab(crop)
 
         return np.array(image)
 
     def get_full_image(self):
         return self._get_image(self.geometry)
 
-    def set_roi(self, x, y, w, h):
-        x1, y1, _, _ = self.geometry
-        self.roi = (x1 + x, y1 + y, x1 + x + w, y1 + y + h)
+    def select_roi(self):
+        self.set_focus()
+        image = self.get_full_image()
+        _roi = cv2.selectROI('roi', image, fromCenter=True)
+        self.roi = (
+            self.geometry[0] + _roi[0],
+            self.geometry[1] + _roi[1],
+            self.geometry[0] + _roi[0] + _roi[2],
+            self.geometry[1] + _roi[1] + _roi[3],
+        )
+        cv2.destroyWindow('roi')
 
     def get_roi_image(self):
         return self._get_image(self.roi)
+
+    def get_width(self):
+        return self.geometry[2] - self.geometry[0]
+
+    def get_height(self):
+        return self.geometry[3] - self.geometry[1]
+
+    def get_roi_width(self):
+        return self.roi[2] - self.roi[0]
+
+    def get_roi_height(self):
+        return self.roi[3] - self.roi[1]
 
     def lookup_geometry(self):
         if sys.platform == 'win32':
@@ -36,22 +60,11 @@ class Window():
 
             def callback(hwnd, extra):
                 if self.name.lower() in GetWindowText(hwnd).lower():
-                    self.id = hwnd
+                    self.geometry = GetWindowRect(hwnd)
+                    self.focus = lambda: SetForegroundWindow(hwnd)
+                    self.valid = True
 
             EnumWindows(callback, None)
-
-            if self.id is None:
-                print(f'could not find {self.name}\'s window')
-                self.valid = False
-            else:
-                self.valid = True
-
-            def focus():
-                SetForegroundWindow(self.id)
-
-            self.focus = focus
-
-            self.geometry = GetWindowRect(self.id)
 
         elif sys.platform == 'linux':
             from Xlib.display import Display
@@ -100,17 +113,6 @@ class Window():
 
             self.geometry = (px + mx, py + my, px + mx + mw, py + my + mh)
 
-    def get_width(self):
-        return self.geometry[2] - self.geometry[0]
-
-    def get_height(self):
-        return self.geometry[3] - self.geometry[1]
-
-    def get_roi_width(self):
-        return self.roi[2] - self.roi[0]
-
-    def get_roi_height(self):
-        return self.roi[3] - self.roi[1]
 
 if __name__ == "__main__":
     name = 'scrcpy'
