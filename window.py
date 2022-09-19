@@ -25,7 +25,7 @@ class Window():
         return np.array(image)
 
     def get_full_image(self):
-        return self._get_image(self.geometry)
+        return self._get_image(tuple(self.geometry))
 
     def select_roi(self):
         self.set_focus()
@@ -60,9 +60,14 @@ class Window():
 
             def callback(hwnd, extra):
                 if self.name.lower() in GetWindowText(hwnd).lower():
-                    self.geometry = GetWindowRect(hwnd)
+                    self.geometry = list(GetWindowRect(hwnd))
                     self.focus = lambda: SetForegroundWindow(hwnd)
                     self.valid = True
+
+                    self.geometry[0] += 8
+                    self.geometry[1] += 25
+                    self.geometry[2] -= 8
+                    self.geometry[3] -= 8
 
             EnumWindows(callback, None)
 
