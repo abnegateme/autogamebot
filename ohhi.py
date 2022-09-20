@@ -13,15 +13,9 @@ import sys
 
 from image_processing import find_grid_by_maxima
 
-def main(adb = False, mss = False, window_name='scrcpy'):
+def main(io_type = 'mss', verbose = False, window_name='scrcpy'):
 
-    if adb and mss:
-        print('choose one method')
-        return
-    if not adb and not mss:
-        return
-
-    if adb:
+    if io_type == 'adb':
         device = Device()
         image = cv2.cvtColor(device.get_image(), cv2.COLOR_BGR2GRAY)
         width, height = device.get_resolution()
@@ -35,7 +29,7 @@ def main(adb = False, mss = False, window_name='scrcpy'):
         false_values = [107, 118]
         none_value = 33
 
-    if mss:
+    if io_type == 'mss':
         window = Window(window_name)
         if not window.is_valid():
             return
@@ -43,28 +37,25 @@ def main(adb = False, mss = False, window_name='scrcpy'):
         image = window.get_roi_image()
         mouse = Controller()
 
-    grid_x, grid_y = find_grid_by_maxima(image, show=True)
+    grid_x, grid_y = find_grid_by_maxima(image, verbose=verbose)
 
-    N_current = np.floor((len(grid_x) + len(grid_y)) / 2)
+    N_current = np.floor((len(grid_x) + len(grid_y)) / 2).astype(int)
 
     x_half_width = np.mean(np.diff(grid_x)) / 2
     y_half_width = np.mean(np.diff(grid_y)) / 2
 
     xx, yy = np.meshgrid(grid_x + x_half_width, grid_y + y_half_width)
 
-    # for x in grid_x + x_half_width:
-    #     for y in grid_y + y_half_width:
-    #         cv2.drawMarker(image, (int(x), int(y)), (255,0,255))
+    if verbose:
+        for x in grid_x + x_half_width:
+            for y in grid_y + y_half_width:
+                cv2.drawMarker(image, (int(x), int(y)), (255,0,255))
 
-    # cv2.imshow('grid', image)
-    # cv2.waitKey()
-    # sys.exit()
+        cv2.imshow('meshgrid', image)
+        cv2.waitKey()
+
 
     image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)[:, :, 0]
-
-    # rng = lambda x: np.arange(x, 2 * N_current * x, 2 * x)
-    # xx, yy = np.meshgrid(rng(math.floor(0.5 * image.shape[1] / N_current)),
-    #                      rng(math.floor(0.5 * image.shape[0] / N_current)))
 
     none_value = 60
     false_values = [25, 24]
@@ -78,10 +69,20 @@ def main(adb = False, mss = False, window_name='scrcpy'):
     plate[np.logical_or(*[plate == value for value in false_values])] = -1
 
 
-    states = np.array([[1, 1, 0], [1, 0, 1], [0, 1, 1],
-              [-1, -1, 0], [-1, 0, -1], [0, -1, -1]], dtype=np.int)
-    replaces = np.array([[1, 1, -1], [1, -1, 1], [-1, 1, 1],
-                [-1, -1, 1], [-1, 1, -1], [1, -1, -1]], dtype=np.int)
+    states = np.array([
+        [1, 1, 0],
+        [1, 0, 1],
+        [0, 1, 1],
+        [-1, -1, 0],
+        [-1, 0, -1],
+        [0, -1, -1]], dtype=np.int)
+    replaces = np.array([
+        [1, 1, -1],
+        [1, -1, 1],
+        [-1, 1, 1],
+        [-1, -1, 1],
+        [-1, 1, -1],
+        [1, -1, -1]], dtype=np.int)
 
     def compute_1st(line):
         is_compute = False
@@ -148,7 +149,7 @@ def main(adb = False, mss = False, window_name='scrcpy'):
 
     print(plate)
 
-    if mss:
+    if io_type == 'mss':
         shift_x = 0
         for state, x, y in zip(plate.ravel(), xx.ravel(), yy.ravel()):
             if x == xx.ravel()[0]:
@@ -167,7 +168,7 @@ def main(adb = False, mss = False, window_name='scrcpy'):
                 continue
             time.sleep(0.02)
 
-    if adb:
+    if io_type == 'adb':
         for state, x, y in zip(plate.ravel(), xx.ravel(), yy.ravel()):
             if state == 1:
                 device.dev.shell(f'input tap {roi[0] + x} {roi[1] + y}')
@@ -182,9 +183,9 @@ def main(adb = False, mss = False, window_name='scrcpy'):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--adb', action='store_true')
-    parser.add_argument('--mss', action='store_true')
-    parser.add_argument('--window_name', default='scrcpy', type=str)
+    parser.add_argument('-io', '--io_type', default='mss', type=str)
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-wn', '--window_name', default='scrcpy', type=str)
     args = parser.parse_args()
 
     main(**vars(args))

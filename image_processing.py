@@ -11,14 +11,14 @@ def find_maxima(image, axis, kernel=5):
     order = round(0.05 * image.shape[inv_axis])
     return S, argrelextrema(S, np.greater, order=order, mode='wrap')[0]
 
-def find_grid_by_maxima(image, kernel=5, show=False):
+def find_grid_by_maxima(image, kernel=5, verbose=False):
     working_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     working_image = cv2.GaussianBlur(working_image, (kernel, kernel), sigmaX=0)
 
     X, x = find_maxima(working_image, 0, kernel)
     Y, y = find_maxima(working_image, 1, kernel)
 
-    if show:
+    if verbose:
         v, u = image.shape[:2]
         plt.figure()
         plt.grid()
