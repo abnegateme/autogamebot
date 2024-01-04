@@ -1,6 +1,5 @@
 import sys
 import mss
-import time
 import numpy as np
 import cv2
 
