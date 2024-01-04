@@ -139,6 +139,6 @@ if __name__ == "__main__":
             image = w.get_full_image()
             print(f'get image time: {time.time() - get_image_time}')
 
-            cv2.imshow('test image', image)
+            cv2.imshow('test_image', image)
 
     cv2.destroyAllWindows()
