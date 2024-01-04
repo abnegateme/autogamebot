@@ -2,6 +2,7 @@ import sys
 import mss
 import numpy as np
 import cv2
+import time
 
 class Window():
     def __init__(self, name):
@@ -39,7 +40,7 @@ class Window():
         cv2.destroyWindow('roi')
 
     def get_roi_image(self):
-        return self._get_image(self.roi)
+        return self._get_image(self.roi) if self.roi else None
 
     def get_width(self):
         return self.geometry[2] - self.geometry[0]
@@ -126,4 +127,18 @@ if __name__ == "__main__":
         print(f'\t{w.geometry}')
         print(f'now setup {name}\'s window focus')
         w.set_focus()
-        image = w.get_full_image()
+
+        cv2.namedWindow('test_image')
+        while True:
+            k = cv2.waitKey(1) & 0xFF
+
+            if k == ord('q'):
+                break
+
+            get_image_time = time.time()
+            image = w.get_full_image()
+            print(f'get image time: {time.time() - get_image_time}')
+
+            cv2.imshow('test image', image)
+
+    cv2.destroyAllWindows()
