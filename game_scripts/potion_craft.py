@@ -31,6 +31,8 @@ class PotionCraftBot:
 
     def process(self):
         _state = 0
+        _last_mean = 0
+        _eq_count = 0
         while self.is_processing:
             image = self.window.get_roi_image()
 
@@ -60,12 +62,19 @@ class PotionCraftBot:
                 if _mean >= 160:
                     if _state !=2:
                         print('find!')
+                        _eq_count = 0
                         _state = 2
                         pydirectinput.keyDown('space')
                         pydirectinput.keyUp('space')
                 else:
                     _state = 1
 
+            if _mean == _last_mean and _state != 0:
+                print(f'stop after {5 - _eq_count}')
+                if _eq_count == 5:
+                    self.is_processing = False
+                _eq_count += 1
+            _last_mean = _mean
 
             cv2.waitKey(1)
 
