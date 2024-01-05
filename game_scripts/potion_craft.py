@@ -5,29 +5,33 @@ sys.path.append('..')
 
 from window import Window
 import cv2
-# from pynput.mouse import Button, Controller
-from pynput.keyboard import Key, Controller, Listener
+from pynput.keyboard import Key, KeyCode, Controller, Listener
 import numpy as np
 from matplotlib import pyplot as plt
 import time
 import pydirectinput
+from threading import Thread
 
 class PotionCraftBot:
     def __init__(self):
         self.window = Window('potion')
         self.window.select_roi(store_or_load_roi=True)
-        self.is_done = False
+        self.is_processing = False
 
-        self.klis = Listener(on_release=self.on_esc_release)
-        self.klis.start()
-
-        # self.mouse = Controller()
         self.keyboard = Controller()
-        self.state = 0
 
-        while True:
-            if self.is_done:
-                break
+        with Listener(on_press=self.keyboard_press) as key_listener:
+            key_listener.join()
+
+    def debug_process(self):
+        while self.is_processing:
+            print('processing')
+            time.sleep(0.1)
+        print('processing done')
+
+    def process(self):
+        _state = 0
+        while self.is_processing:
             image = self.window.get_roi_image()
 
             yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
@@ -47,31 +51,39 @@ class PotionCraftBot:
             _mean = np.mean(yuv_0[:20, xmean])
 
             if _mean < 150:
-                if self.state != 0:
+                if _state != 0:
                     print('done')
                     pydirectinput.keyDown('space')
                     pydirectinput.keyUp('space')
-                    self.is_done = True
+                    self.is_processing = False
             else:
                 if _mean >= 160:
-                    if self.state !=2:
+                    if _state !=2:
                         print('find!')
-                        self.state = 2
+                        _state = 2
                         pydirectinput.keyDown('space')
                         pydirectinput.keyUp('space')
                 else:
-                    self.state = 1
+                    _state = 1
 
 
             cv2.waitKey(1)
 
         cv2.destroyAllWindows()
+        print('processing done')
 
-    def on_esc_release(self, key):
-        if key == Key.esc:
-            # Stop listener
-            self.is_done = True
-            return False
+    def keyboard_press(self, key):
+        if isinstance(key, Key):
+            if key == Key.esc:
+                return False
+        elif key.char == 'p':
+            if self.is_processing:
+                self.is_processing = False
+            else:
+                self.is_processing = True
+                process_thread = Thread(target=self.process)
+                process_thread.start()
+                print('p pressed')
 
 if __name__ == "__main__":
     bot = PotionCraftBot()
