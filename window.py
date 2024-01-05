@@ -3,6 +3,7 @@ import mss
 import numpy as np
 import cv2
 import time
+import os
 
 class Window():
     def __init__(self, name):
@@ -27,20 +28,31 @@ class Window():
     def get_full_image(self):
         return self._get_image(tuple(self.geometry))
 
-    def select_roi(self):
+    def select_roi(self, from_center=False, store_or_load_roi=False):
+        if store_or_load_roi:
+            name = self.name.replace(' ', '_') + '.npy'
+            if os.path.exists(name):
+                self.roi = tuple(np.load(name).tolist())
+                print(f'loaded roi: {self.roi}')
+                return
         self.set_focus()
         image = self.get_full_image()
-        _roi = cv2.selectROI('roi', image, fromCenter=True)
+        _roi = cv2.selectROI('roi', image, fromCenter=from_center)
         self.roi = (
             self.geometry[0] + _roi[0],
             self.geometry[1] + _roi[1],
             self.geometry[0] + _roi[0] + _roi[2],
             self.geometry[1] + _roi[1] + _roi[3],
         )
+        print(f'selected roi: {self.roi}')
         cv2.destroyWindow('roi')
 
+        if store_or_load_roi:
+            name = self.name.replace(' ', '_')
+            np.save(name, self.roi)
+
     def get_roi_image(self):
-        return self._get_image(self.roi) if self.roi else None
+        return self._get_image(self.roi)
 
     def get_width(self):
         return self.geometry[2] - self.geometry[0]
