@@ -11,7 +11,6 @@ class Window():
         self.valid = False
         self.geometry = None
         self.roi = None
-        self.mss = mss.mss()
         self.lookup_geometry()
 
     def set_focus(self):
@@ -21,7 +20,8 @@ class Window():
         return self.valid
 
     def _get_image(self, crop):
-        image = self.mss.grab(crop)
+        with mss.mss() as sct:
+            image = sct.grab(crop)
 
         return np.array(image)
 
