@@ -23,11 +23,28 @@ class PotionCraftBot:
         with Listener(on_press=self.keyboard_press) as key_listener:
             key_listener.join()
 
+
     def debug_process(self):
         while self.is_processing:
             print('processing')
             time.sleep(0.1)
         print('processing done')
+
+
+    def _get_triangle_vertex(self, array):
+        if len(array) % 2 == 0:
+            vertex = np.mean(array)
+        else:
+            l = int(np.ceil(len(array) / 2))
+            start, stop = array[0], array[0] + l
+            r = np.arange(start, stop)
+            if (r == array[:l]).all():
+                vertex = np.floor(np.mean(array[1:]))
+            else:
+                vertex = np.ceil(np.mean(array[:-1]))
+
+        return int(vertex)
+
 
     def process(self):
         _state = 0
@@ -37,29 +54,30 @@ class PotionCraftBot:
             image = self.window.get_roi_image()
 
             yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
-            yuv_0 = yuv[:,:,2]
-            _, threshold = cv2.threshold(yuv[:,:,1], 110, 255, cv2.THRESH_BINARY)
+            _, u_threshold = cv2.threshold(yuv[:,:,1], 110, 255, cv2.THRESH_BINARY)
 
-            xs = np.where(threshold[30, :] == 255)[0]
+            y = int(self.window.get_roi_height() * 0.82)
+            xs = np.where(u_threshold[y, :] == 255)[0]
+            xmean = self._get_triangle_vertex(xs)
+            # print(f"xs: {xs}, xmean: {xmean}")
 
-            xmean = int((xs[0] + xs[-1]) / 2)
+            v_blured = cv2.medianBlur(yuv[:,:,2], 3)
 
-            yuv_0 = cv2.medianBlur(yuv_0, 3)
-
-            cv2.line(image, (xmean, 0), (xmean, 50), (0, 0, 255), 1)
+            cv2.line(image, (xmean, 0), (xmean, y), (0, 0, 255), 1)
 
             cv2.imshow('debug image', image)
 
-            _mean = np.mean(yuv_0[:20, xmean])
+            y = int(self.window.get_roi_height() * 0.4)
+            v_mean = np.mean(v_blured[:y, xmean])
 
-            if _mean < 150:
+            if v_mean < 150:
                 if _state != 0:
                     print('done')
                     pydirectinput.keyDown('space')
                     pydirectinput.keyUp('space')
                     self.is_processing = False
             else:
-                if _mean >= 160:
+                if v_mean >= 160:
                     if _state !=2:
                         print('find!')
                         _eq_count = 0
@@ -69,17 +87,18 @@ class PotionCraftBot:
                 else:
                     _state = 1
 
-            if _mean == _last_mean and _state != 0:
+            if v_mean == _last_mean and _state != 0:
                 print(f'stop after {5 - _eq_count}')
                 if _eq_count == 5:
                     self.is_processing = False
                 _eq_count += 1
-            _last_mean = _mean
+            _last_mean = v_mean
 
             cv2.waitKey(1)
 
         cv2.destroyAllWindows()
         print('processing done')
+
 
     def keyboard_press(self, key):
         if isinstance(key, Key):
@@ -93,6 +112,7 @@ class PotionCraftBot:
                 process_thread = Thread(target=self.process)
                 process_thread.start()
                 print('p pressed')
+
 
 if __name__ == "__main__":
     bot = PotionCraftBot()
