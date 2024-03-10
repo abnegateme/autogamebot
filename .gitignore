@@ -3,3 +3,4 @@ env
 *.npy
 *.txt
 *.jpg
+*.json
