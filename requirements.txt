@@ -4,3 +4,4 @@ opencv-python==4.9.0.80
 PyDirectInput==1.0.4
 pynput==1.7.6
 pywin32==306 ; sys_platform == "win32"
+pytesseract==0.3.10
